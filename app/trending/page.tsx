@@ -1,43 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getRelativeTime } from "@/lib/kronos-helper";
-import { Prisma } from "@prisma/client";
+import { TreeMap } from "@/lib/data-structures/TreeMap";
 
-interface PageProps {
-  searchParams: Promise<{ search?: string; channelId?: string }>;
-}
-
-export default async function Home({ searchParams }: PageProps) {
-  const resolvedParams = await searchParams;
-  const search = resolvedParams.search || "";
-  const channelId = resolvedParams.channelId || "";
-
-  // Construct query where clause: show published videos or upcoming premieres
-  const whereClause: Prisma.VideoWhereInput = {
-    OR: [
-      { isPublished: true },
-      { isPremiere: true }
-    ]
-  };
-
-  if (search) {
-    whereClause.AND = [
-      {
-        OR: [
-          { title: { contains: search, mode: "insensitive" } },
-          { description: { contains: search, mode: "insensitive" } },
-        ]
-      }
-    ];
-  }
-
-  if (channelId) {
-    whereClause.channelId = channelId;
-  }
-
-  // Fetch videos from DB
+export default async function TrendingPage() {
+  // 1. Fetch published videos
   const videos = await prisma.video.findMany({
-    where: whereClause,
+    where: { isPublished: true },
     include: {
       channel: {
         select: {
@@ -47,24 +16,32 @@ export default async function Home({ searchParams }: PageProps) {
         },
       },
     },
-    orderBy: { createdAt: "desc" },
   });
+
+  // 2. Initialize TreeMap and sort
+  const treeMap = new TreeMap<number, typeof videos[0]>();
+  for (const video of videos) {
+    treeMap.insert(video.views, video);
+  }
+
+  const sortedVideos = treeMap.getValuesDescending();
 
   return (
     <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-8">
-      {/* Search status or title */}
+      {/* Title */}
       <div className="mb-6">
-        <h1 className="text-xl font-bold tracking-tight text-white">
-          {search ? `Search results for "${search}"` : "Recommended"}
+        <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+          🔥 Trending Videos
         </h1>
-        {videos.length === 0 && (
-          <p className="text-[#a3a3a3] mt-2 text-sm">No videos found matching your request.</p>
+        <p className="text-[#a3a3a3] text-sm mt-1">The most viewed videos on DTube right now.</p>
+        {sortedVideos.length === 0 && (
+          <p className="text-[#a3a3a3] mt-2 text-sm">No trending videos available yet.</p>
         )}
       </div>
 
       {/* Video Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {videos.map((video) => (
+        {sortedVideos.map((video) => (
           <article key={video.id} className="group flex flex-col gap-2">
             {/* Thumbnail */}
             <Link href={`/watch/${video.id}`} className="aspect-video w-full rounded-lg overflow-hidden bg-[#141414] border border-[#262626] relative block">
@@ -80,17 +57,12 @@ export default async function Home({ searchParams }: PageProps) {
                   No Thumbnail
                 </div>
               )}
-              {video.isPremiere && (
-                <span className="absolute bottom-2 right-2 bg-red-600 text-white font-semibold text-[10px] px-1.5 py-0.5 rounded uppercase">
-                  Premiere
-                </span>
-              )}
             </Link>
 
             {/* Video Details */}
             <div className="flex gap-3">
               {/* Channel Logo */}
-              <div className="w-9 h-9 rounded-full overflow-hidden bg-[#262626] shrink-0">
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-[#262626] flex-shrink-0">
                 {video.channel.logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -114,7 +86,7 @@ export default async function Home({ searchParams }: PageProps) {
                   {video.channel.name}
                 </Link>
                 <div className="text-[11px] text-[#a3a3a3] flex items-center gap-1.5 mt-0.5">
-                  <span>{video.views.toLocaleString()} views</span>
+                  <span className="text-[#ef4444] font-semibold">{video.views.toLocaleString()} views</span>
                   <span>•</span>
                   <span>{getRelativeTime(video.createdAt)}</span>
                 </div>

@@ -1,0 +1,181 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  username      String?  @unique
+  passwordHash  String?
+  name          String?
+  emailVerified DateTime?
+  image         String?
+  role          String   @default("USER") // "USER" or "ADMIN"
+  isBanned      Boolean  @default(false)
+  
+  // DTube Pro Subscription
+  isPro         Boolean   @default(false)
+  proExpiresAt  DateTime?
+
+  // Relations
+  channels      Channel[]      @relation("ChannelOwner")
+  subscriptions Subscription[]
+  likes         Like[]
+  comments      Comment[]
+  strikes       Strike[]       @relation("UserStrikes")
+  memberships   Membership[]
+  accounts      Account[]
+  sessions      Session[]
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model Channel {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  bannerUrl   String?
+  logoUrl     String?
+  isBanned    Boolean  @default(false)
+  
+  // Relations
+  ownerId     String
+  owner       User     @relation("ChannelOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  videos      Video[]
+  subscribers Subscription[]
+  memberships Membership[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Video {
+  id            String    @id @default(uuid())
+  title         String
+  description   String?
+  videoUrl      String    // Cloudinary URL
+  thumbnailUrl  String?   // Cloudinary URL
+  views         Int       @default(0)
+  isPublished   Boolean   @default(true)
+  
+  // Scheduled Live Premiere
+  isPremiere    Boolean   @default(false)
+  scheduledFor  DateTime?
+
+  // Relations
+  channelId     String
+  channel       Channel   @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  likes         Like[]
+  comments      Comment[]
+  strikes       Strike[]  @relation("VideoStrikes")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([views]) // Indexed for trending queries
+}
+
+model Subscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@unique([userId, channelId])
+}
+
+model Comment {
+  id         String   @id @default(uuid())
+  content    String
+  isFlagged  Boolean  @default(false)
+  
+  // Relations
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId    String
+  video      Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId   String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@unique([userId, videoId])
+}
+
+model Strike {
+  id        String   @id @default(uuid())
+  reason    String
+  
+  // Relations
+  userId    String
+  user      User     @relation("UserStrikes", fields: [userId], references: [id], onDelete: Cascade)
+  videoId   String?
+  video     Video?   @relation("VideoStrikes", fields: [videoId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+}
+
+model Membership {
+  id        String   @id @default(uuid())
+  expiresAt DateTime
+  
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channelId String
+  channel   Channel  @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, channelId])
+}
