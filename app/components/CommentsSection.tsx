@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { io } from "socket.io-client";
 
 interface CommentUser {
   id: string;
@@ -29,6 +30,28 @@ export default function CommentsSection({ videoId, currentUser }: CommentsSectio
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Listen for real-time comment updates via WebSocket
+  useEffect(() => {
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
+    const socket = io(wsUrl);
+
+    socket.emit("join_room", {
+      roomId: videoId,
+      username: currentUser?.username || "Guest",
+    });
+
+    socket.on("new_comment_received", ({ comment }) => {
+      setComments((prev) => {
+        if (prev.some((c) => c.id === comment.id)) return prev;
+        return [comment, ...prev];
+      });
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [videoId, currentUser]);
 
   // Fetch comments
   const fetchComments = useCallback(async () => {

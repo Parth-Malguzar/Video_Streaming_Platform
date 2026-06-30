@@ -294,6 +294,7 @@ export default function WatchPageContainer({
             videoElementRef={videoRef}
             currentUser={currentUser}
             isPremiere={video.isPremiere}
+            onLikesUpdate={(likes) => setLikesCount(likes)}
           />
         </div>
       </div>

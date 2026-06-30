@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { io } from "socket.io-client";
 
 export async function GET(
   request: NextRequest,
@@ -87,6 +88,18 @@ export async function POST(
         },
       },
     });
+
+    // 4. Notify WebSocket server of new comment
+    try {
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
+      const socket = io(wsUrl);
+      socket.on("connect", () => {
+        socket.emit("comment_posted", { videoId, comment: newComment });
+        socket.disconnect();
+      });
+    } catch (wsErr) {
+      console.error("Failed to notify socket server of comment update:", wsErr);
+    }
 
     return NextResponse.json(
       { message: "Comment posted successfully", comment: newComment },

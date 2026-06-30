@@ -98,6 +98,18 @@ io.on("connection", (socket: Socket) => {
     io.to(videoId).emit("premiere_live", { videoId });
   });
 
+  // 3.6. Broadcast updated like count from API route to room
+  socket.on("like_updated", ({ videoId, likes }: { videoId: string; likes: number }) => {
+    console.log(`Likes updated for video ${videoId} -> ${likes}`);
+    io.to(videoId).emit("likes_count_updated", { videoId, likes });
+  });
+
+  // 3.7. Broadcast new comment from API route to room
+  socket.on("comment_posted", ({ videoId, comment }: { videoId: string; comment: any }) => {
+    console.log(`New comment posted on video ${videoId}`);
+    io.to(videoId).emit("new_comment_received", { videoId, comment });
+  });
+
   // 4. Handle Disconnect
   socket.on("disconnect", () => {
     console.log(`Socket disconnected: ${socket.id}`);

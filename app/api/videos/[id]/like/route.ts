@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { io } from "socket.io-client";
 
 export async function POST(
   request: NextRequest,
@@ -35,6 +36,9 @@ export async function POST(
       },
     });
 
+    let likedState = false;
+    let likeCount = 0;
+
     // 4. Toggle like state
     if (existingLike) {
       // User has already liked the video, so unlike it (remove Like record)
@@ -45,8 +49,8 @@ export async function POST(
       });
 
       // Get the updated like count for the response
-      const likeCount = await prisma.like.count({ where: { videoId } });
-      return NextResponse.json({ liked: false, likes: likeCount, message: "Video unliked" });
+      likeCount = await prisma.like.count({ where: { videoId } });
+      likedState = false;
     } else {
       // User hasn't liked the video, so like it (create Like record)
       await prisma.like.create({
@@ -56,9 +60,27 @@ export async function POST(
         },
       });
 
-      const likeCount = await prisma.like.count({ where: { videoId } });
-      return NextResponse.json({ liked: true, likes: likeCount, message: "Video liked" });
+      likeCount = await prisma.like.count({ where: { videoId } });
+      likedState = true;
     }
+
+    // 5. Notify WebSocket server of updated likes
+    try {
+      const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+      const socket = io(wsUrl);
+      socket.on("connect", () => {
+        socket.emit("like_updated", { videoId, likes: likeCount });
+        socket.disconnect();
+      });
+    } catch (wsErr) {
+      console.error("Failed to notify socket server of like update:", wsErr);
+    }
+
+    return NextResponse.json({
+      liked: likedState,
+      likes: likeCount,
+      message: likedState ? "Video liked" : "Video unliked"
+    });
   } catch (error) {
     console.error("Like toggle error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

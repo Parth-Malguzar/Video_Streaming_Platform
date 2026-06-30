@@ -12,6 +12,7 @@ interface WatchPartyPanelProps {
     email: string;
   } | null;
   isPremiere: boolean;
+  onLikesUpdate?: (likes: number) => void;
 }
 
 interface ChatMessage {
@@ -27,6 +28,7 @@ export default function WatchPartyPanel({
   videoElementRef,
   currentUser,
   isPremiere,
+  onLikesUpdate,
 }: WatchPartyPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -62,6 +64,12 @@ export default function WatchPartyPanel({
 
     newSocket.on("chat_history", (history: ChatMessage[]) => {
       setMessages(history);
+    });
+
+    newSocket.on("likes_count_updated", ({ likes }) => {
+      if (onLikesUpdate) {
+        onLikesUpdate(likes);
+      }
     });
 
     // Listen to video sync actions from other watch party members
