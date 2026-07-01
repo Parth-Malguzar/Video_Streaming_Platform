@@ -31,7 +31,7 @@ export default async function TrendingPage() {
       {/* Title */}
       <div className="mb-6">
         <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-          🔥 Trending Videos
+           Trending Videos
         </h1>
         <p className="text-[#a3a3a3] text-sm mt-1">The most viewed videos on DTube right now.</p>
         {sortedVideos.length === 0 && (

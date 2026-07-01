@@ -35,6 +35,8 @@ model User {
   memberships   Membership[]
   accounts      Account[]
   sessions      Session[]
+  notifications        Notification[] @relation("UserNotifications")
+  sentNotifications    Notification[] @relation("SenderNotifications")
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -106,6 +108,7 @@ model Video {
   likes         Like[]
   comments      Comment[]
   strikes       Strike[]  @relation("VideoStrikes")
+  notifications Notification[]
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -135,6 +138,11 @@ model Comment {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   videoId    String
   video      Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  
+  parentId   String?
+  parent     Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[] @relation("CommentReplies")
+  notifications Notification[]
 
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -179,3 +187,26 @@ model Membership {
 
   @@unique([userId, channelId])
 }
+
+model Notification {
+  id          String   @id @default(uuid())
+  type        String   // "REPLY", "LIKE", "SUBSCRIBE"
+  isRead      Boolean  @default(false)
+  
+  // The user who receives the notification
+  userId      String
+  user        User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // The user who triggered the notification
+  senderId    String
+  sender      User     @relation("SenderNotifications", fields: [senderId], references: [id], onDelete: Cascade)
+  
+  // Optional relations
+  videoId     String?
+  video       Video?   @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  commentId   String?
+  comment     Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+}
+

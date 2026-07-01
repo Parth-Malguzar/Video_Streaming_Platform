@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { handleSignOut } from "@/app/actions/auth";
 import SearchBar from "./SearchBar";
+import NotificationBell from "./NotificationBell";
 
 export default async function Navbar() {
   const session = await auth();
@@ -35,6 +36,7 @@ export default async function Navbar() {
 
           {user ? (
             <div className="flex items-center gap-3">
+              <NotificationBell userId={user.id} />
               <span className="text-gray-300 text-xs sm:text-sm">{username || email}</span>
               {role === "ADMIN" && (
                 <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded text-xs">Admin</span>

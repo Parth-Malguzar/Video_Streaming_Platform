@@ -56,7 +56,7 @@ export async function POST(
     }
 
     const videoId = (await params).id;
-    const { content } = await request.json();
+    const { content, parentId } = await request.json();
 
     if (!content || !content.trim()) {
       return NextResponse.json({ error: "Comment content cannot be empty" }, { status: 400 });
@@ -71,12 +71,23 @@ export async function POST(
       return NextResponse.json({ error: "Video not found" }, { status: 404 });
     }
 
+    // If parentId is provided, verify the parent comment exists and is on the same video
+    if (parentId) {
+      const parentComment = await prisma.comment.findUnique({
+        where: { id: parentId },
+      });
+      if (!parentComment || parentComment.videoId !== videoId) {
+        return NextResponse.json({ error: "Parent comment not found" }, { status: 404 });
+      }
+    }
+
     // 3. Create the comment
     const newComment = await prisma.comment.create({
       data: {
         content: content.trim(),
         userId,
         videoId,
+        parentId: parentId || null,
       },
       include: {
         user: {
@@ -89,7 +100,49 @@ export async function POST(
       },
     });
 
-    // 4. Notify WebSocket server of new comment
+    // 4. If it is a reply, create a notification and send real-time socket event
+    if (parentId) {
+      try {
+        const parentComment = await prisma.comment.findUnique({
+          where: { id: parentId },
+        });
+
+        if (parentComment && parentComment.userId !== userId) {
+          const notification = await prisma.notification.create({
+            data: {
+              userId: parentComment.userId,
+              senderId: userId,
+              type: "REPLY",
+              videoId,
+              commentId: newComment.id,
+            },
+            include: {
+              sender: {
+                select: {
+                  username: true,
+                  name: true,
+                },
+              },
+            },
+          });
+
+          // Send real-time socket notification
+          const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
+          const socket = io(wsUrl);
+          socket.on("connect", () => {
+            socket.emit("notification_sent", {
+              userId: parentComment.userId,
+              notification,
+            });
+            socket.disconnect();
+          });
+        }
+      } catch (notifErr) {
+        console.error("Failed to create/send reply notification:", notifErr);
+      }
+    }
+
+    // 5. Notify WebSocket server of new comment
     try {
       const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "http://localhost:3001";
       const socket = io(wsUrl);

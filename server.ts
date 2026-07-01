@@ -110,6 +110,18 @@ io.on("connection", (socket: Socket) => {
     io.to(videoId).emit("new_comment_received", { videoId, comment });
   });
 
+  // 3.8. Join User notifications room
+  socket.on("join_user", ({ userId }: { userId: string }) => {
+    socket.join(`user_${userId}`);
+    console.log(`User ${userId} joined their notifications room`);
+  });
+
+  // 3.9. Broadcast a notification to a specific user
+  socket.on("notification_sent", ({ userId, notification }: { userId: string; notification: any }) => {
+    console.log(`Sending real-time notification to user_${userId}`);
+    io.to(`user_${userId}`).emit("new_notification", notification);
+  });
+
   // 4. Handle Disconnect
   socket.on("disconnect", () => {
     console.log(`Socket disconnected: ${socket.id}`);
