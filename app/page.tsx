@@ -21,12 +21,17 @@ export default async function Home({ searchParams }: PageProps) {
   };
 
   if (search) {
+    const searchTerms = [search];
+    const trimmed = search.replace(/s+$/i, "");
+    if (trimmed && trimmed.length > 2 && trimmed.toLowerCase() !== search.toLowerCase()) {
+      searchTerms.push(trimmed);
+    }
     whereClause.AND = [
       {
-        OR: [
-          { title: { contains: search, mode: "insensitive" } },
-          { description: { contains: search, mode: "insensitive" } },
-        ]
+        OR: searchTerms.flatMap((term) => [
+          { title: { contains: term, mode: "insensitive" } },
+          { description: { contains: term, mode: "insensitive" } },
+        ])
       }
     ];
   }

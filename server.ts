@@ -1,7 +1,6 @@
 import { createServer } from "http";
 import { Server, Socket } from "socket.io";
-import { prisma } from "./lib/prisma";
-const PORT = process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3001;
+const PORT = process.env.WS_PORT ;
 
 const httpServer = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "text/plain" });
@@ -36,6 +35,7 @@ interface SyncStatePayload {
 }
 
 const roomHistories: Record<string, any[]> = {};
+//in memory objects
 
 io.on("connection", (socket: Socket) => {
   console.log(`Socket connected: ${socket.id}`);

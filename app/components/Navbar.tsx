@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { handleSignOut } from "@/app/actions/auth";
+import SearchBar from "./SearchBar";
 
 export default async function Navbar() {
   const session = await auth();
@@ -18,33 +19,23 @@ export default async function Navbar() {
           <span>DTube</span>
         </Link>
 
-        {/* Search Bar */}
-        <form action="/" method="GET" className="flex-1 max-w-md relative hidden sm:block">
-          <input
-            type="text"
-            name="search"
-            placeholder="Search videos..."
-            className="w-full bg-[#0a0a0a] border border-[#262626] text-sm rounded-md px-4 py-2 text-white focus:outline-none focus:border-[#ef4444] placeholder-gray-500"
-          />
-          <button type="submit" className="absolute right-3 top-2 text-gray-400 hover:text-white text-sm">
-            🔍
-          </button>
-        </form>
+        {/* Search Bar (Normal & Voice) */}
+        <SearchBar />
 
         {/* Navigation Actions */}
         <nav className="flex items-center gap-4 text-sm font-medium">
           <Link href="/trending" className="text-gray-300 hover:text-white transition">
-            🔥 Trending
+             Trending
           </Link>
           <Link href="/studio" className="text-gray-300 hover:text-white transition">
-            📹 Studio
+             Studio
           </Link>
 
           <span className="h-4 w-px bg-[#262626]" />
 
           {user ? (
             <div className="flex items-center gap-3">
-              <span className="text-gray-300 text-xs sm:text-sm">👤 {username || email}</span>
+              <span className="text-gray-300 text-xs sm:text-sm">{username || email}</span>
               {role === "ADMIN" && (
                 <span className="bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded text-xs">Admin</span>
               )}

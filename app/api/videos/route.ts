@@ -22,10 +22,15 @@ export async function GET(request: NextRequest) {
     };
 
     if (search) {
-      whereClause.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-      ];
+      const searchTerms = [search];
+      const trimmed = search.replace(/s+$/i, "");
+      if (trimmed && trimmed.length > 2 && trimmed.toLowerCase() !== search.toLowerCase()) {
+        searchTerms.push(trimmed);
+      }
+      whereClause.OR = searchTerms.flatMap((term) => [
+        { title: { contains: term, mode: "insensitive" } },
+        { description: { contains: term, mode: "insensitive" } },
+      ]);
     }
 
     if (channelId) {
